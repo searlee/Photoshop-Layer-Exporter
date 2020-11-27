@@ -34,10 +34,11 @@ prefs.xml = '.xml';
 prefs.imgOnly = '[img]';
 prefs.posOnly = '[pos]';
 prefs.ignore = '[na]';
+prefs.run = 1;
 prefs.manifestFile = 'manifest_static.json';
 prefs.fileQuality = 100;
 prefs.filePath = docPath.toString();
-prefs.manifest = true;
+prefs.manifest = false;
 prefs.trim = true;
 prefs.coords = true;
 prefs.version = app.version.split('.')[0];
@@ -55,163 +56,162 @@ function main() {
     if (showDialog() === 1) {
         var documentCopy = doc.duplicate();
         doc = documentCopy;
+        removeLayers(documentCopy);
 
-        var progressBarWindow = createProgressBar();
+        prefs.count = countLayers(documentCopy);
+
+        var progressBarWindow = createProgressBar(prefs.count);
         if (!progressBarWindow) {
             return 'cancel';
         }
 
-        prefs.count = countLayers(documentCopy);
         var collected = processLayers(documentCopy, allLayers, progressBarWindow, prefs.count);
 
         documentCopy.close(SaveOptions.DONOTSAVECHANGES);
         documentCopy = null;
-
-        if (prefs.trim) {
-            if (prefs.coords) {
-                alert(
-                    'Export Completed.\n' +
-                        prefs.count +
-                        ' Trimmed images have been exported to:\n ' +
-                        prefs.filePath.toString().replace('%20', ' ') +
-                        '\n' +
-                        'with their corresponding coordinates',
-                    'Export Completed'
-                );
-            } else if (prefs.manifest) {
-                alert(
-                    'Export Completed.\n' +
-                        prefs.count +
-                        ' Images have been exported to:\n ' +
-                        prefs.filePath.toString().replace('%20', ' ') +
-                        '\n' +
-                        'and a manifest file has been saved to' +
-                        prefs.filePath.toString().replace('%20', ' ') +
-                        '/manifest/' +
-                        prefs.manifestFile,
-                    'Export Completed'
-                );
+        if (prefs.run === 1) {
+            if (prefs.trim) {
+                if (prefs.coords) {
+                    alert(
+                        'Export Completed.\n' +
+                            prefs.count +
+                            ' Trimmed images have been exported to:\n ' +
+                            prefs.filePath.toString().replace('%20', ' ') +
+                            '\n' +
+                            'with their corresponding coordinates',
+                        'Export Completed'
+                    );
+                } else if (prefs.manifest) {
+                    alert(
+                        'Export Completed.\n' +
+                            prefs.count +
+                            ' Images have been exported to:\n ' +
+                            prefs.filePath.toString().replace('%20', ' ') +
+                            '\n' +
+                            'and a manifest file has been saved to' +
+                            prefs.filePath.toString().replace('%20', ' ') +
+                            '/manifest/' +
+                            prefs.manifestFile,
+                        'Export Completed'
+                    );
+                } else {
+                    alert('Export Completed.\n' + prefs.count + ' Trimmed images have been exported to:\n ' + prefs.filePath.toString().replace('%20', ' '), 'Export Completed');
+                }
             } else {
-                alert('Export Completed.\n' + prefs.count + ' Trimmed images have been exported to:\n ' + prefs.filePath.toString().replace('%20', ' '), 'Export Completed');
+                if (prefs.coords) {
+                    alert(
+                        'Export Completed.\n' +
+                            prefs.count +
+                            ' Images have been exported to:\n ' +
+                            prefs.filePath.toString().replace('%20', ' ') +
+                            '\n' +
+                            'with their corresponding coordinates',
+                        'Export Completed'
+                    );
+                } else if (prefs.manifest) {
+                    alert(
+                        'Export Completed.\n' +
+                            prefs.count +
+                            ' Images have been exported to:\n ' +
+                            prefs.filePath.toString().replace('%20', ' ') +
+                            '\n' +
+                            'and a manifest file has been saved to' +
+                            prefs.filePath.toString().replace('%20', ' ') +
+                            '/manifest/' +
+                            prefs.manifestFile,
+                        'Export Completed'
+                    );
+                } else {
+                    alert('Export Completed.\n' + prefs.count + ' Images have been exported to:\n ' + prefs.filePath.toString().replace('%20', ' '), 'Export Completed');
+                }
             }
         } else {
-            if (prefs.coords) {
-                alert(
-                    'Export Completed.\n' +
-                        prefs.count +
-                        ' Images have been exported to:\n ' +
-                        prefs.filePath.toString().replace('%20', ' ') +
-                        '\n' +
-                        'with their corresponding coordinates',
-                    'Export Completed'
-                );
-            } else if (prefs.manifest) {
-                alert(
-                    'Export Completed.\n' +
-                        prefs.count +
-                        ' Images have been exported to:\n ' +
-                        prefs.filePath.toString().replace('%20', ' ') +
-                        '\n' +
-                        'and a manifest file has been saved to' +
-                        prefs.filePath.toString().replace('%20', ' ') +
-                        '/manifest/' +
-                        prefs.manifestFile,
-                    'Export Completed'
-                );
-            } else {
-                alert('Export Completed.\n' + prefs.count + ' Images have been exported to:\n ' + prefs.filePath.toString().replace('%20', ' '), 'Export Completed');
-            }
+            alert('Export Cancelled.\n' + 'Some images may have been exported', 'Export Cancelled');
         }
     }
 }
 
 function processLayers(parent, allLayers, progressBarWindow, count) {
     for (var i = 0; i < allLayers.groups.length; i++) {
-        var group = allLayers.groups[i],
-            ignoreLayer = group.name.indexOf(prefs.ignore, 0) > -1,
-            ignoreGroup = group.parent.name.indexOf(prefs.ignore, 0) > -1;
-        if (!ignoreGroup) {
-            if (!ignoreLayer) {
-                saveFolder(group);
-            }
-        }
+        var group = allLayers.groups[i];
+        saveFolder(group);
     }
+
     for (var i = 0; i < allLayers.layers.length; i++) {
-        var layer = allLayers.layers[i],
-            layerName = layer.name,
-            layerName = getFolder(layer, layerName),
-            bounds = layer.bounds,
-            boundsLeft = bounds[0].value,
-            boundsTop = bounds[1].value,
-            boundsRight = bounds[2].value,
-            boundsBottom = bounds[3].value,
-            ignoreLayer = 0,
-            imgOnly = layer.name.indexOf(prefs.imgOnly, 0) > -1,
-            posOnly = layer.name.indexOf(prefs.posOnly, 0) > -1,
-            jpg = layer.name.lastIndexOf(prefs.jpg) > -1,
-            ignoreLayer = layer.name.indexOf(prefs.ignore, 0) > -1,
-            ignoreGroup = layer.parent.name.indexOf(prefs.ignore, 0) > -1;
+        if (prefs.run === 1) {
+            var layer = allLayers.layers[i],
+                layerName = layer.name,
+                layerName = getFolder(layer, layerName),
+                bounds = layer.bounds,
+                boundsLeft = bounds[0].value,
+                boundsTop = bounds[1].value,
+                boundsRight = bounds[2].value,
+                boundsBottom = bounds[3].value,
+                imgOnly = layer.name.indexOf(prefs.imgOnly, 0) > -1,
+                posOnly = layer.name.indexOf(prefs.posOnly, 0) > -1,
+                jpg = layer.name.lastIndexOf(prefs.jpg) > -1,
+                currentCount = 1 + i;
 
-        layer.visible = false;
+            if (progressBarWindow) {
+                showProgressBar(progressBarWindow, 'Exporting ' + currentCount + ' of ' + count + '...', currentCount, count);
+            }
 
-        if (!ignoreGroup) {
-            if (!ignoreLayer) {
-                makeVisible(layer);
+            layer.visible = false;
 
-                if (progressBarWindow) {
-                    showProgressBar(progressBarWindow, 'Exporting ' + (i + 1) + ' of ' + count + '...', count);
-                }
+            makeVisible(layer);
 
-                // remove [img] and [pos] from layer names for export
-                if (imgOnly) {
-                    layerName = layerName.replace(prefs.imgOnly, '');
-                } else if (posOnly) {
-                    layerName = layerName.replace(prefs.posOnly, '');
-                }
+            // remove [img] and [pos] from layer names for export
+            if (imgOnly) {
+                layerName = layerName.replace(prefs.imgOnly, '');
+            } else if (posOnly) {
+                layerName = layerName.replace(prefs.posOnly, '');
+            }
 
-                // do stuff to the layerName to make them work with everything
-                if (jpg) {
-                    layerName = layerName;
-                    layerName = File(prefs.filePath + '/' + layerName);
-                } else {
-                    layerName = File(prefs.filePath + '/' + layerName + prefs.png);
-                }
+            // do stuff to the layerName to make them work with everything
+            if (jpg) {
+                layerName = layerName;
+                layerName = File(prefs.filePath + '/' + layerName);
+            } else {
+                layerName = File(prefs.filePath + '/' + layerName + prefs.png);
+            }
 
-                if (!imgOnly) {
-                    if (prefs.coords) {
-                        fileName = layerName.toString().slice(0, -4);
+            if (!imgOnly) {
+                if (prefs.coords) {
+                    fileName = layerName.toString().slice(0, -4);
 
-                        if (jpg) {
-                            layer.name = layer.name.slice(0, -4);
-                            prefs.png = prefs.jpg;
-                        } else {
-                            prefs.png = prefs.default;
-                        }
-                        processCoords(layer, fileName);
+                    if (jpg) {
+                        layer.name = layer.name.slice(0, -4);
+                        prefs.png = prefs.jpg;
+                    } else {
+                        prefs.png = prefs.default;
                     }
-                }
-
-                if (prefs.trim) crop(boundsTop, boundsRight, boundsBottom, boundsLeft);
-
-                // save files
-                if (jpg) {
-                    if (!posOnly) SaveJPG(layerName);
-                } else {
-                    if (!posOnly) SavePNG(layerName);
-                }
-                // Save coordinates if wanted
-                if (prefs.trim) undo(app.activeDocument);
-
-                layer.visible = false;
-
-                if (progressBarWindow) {
-                    updateProgressBar(progressBarWindow, i);
+                    processCoords(layer, fileName);
                 }
             }
+
+            if (prefs.trim) crop(boundsTop, boundsRight, boundsBottom, boundsLeft);
+
+            // save files
+            if (jpg) {
+                if (!posOnly) SaveJPG(layerName);
+            } else {
+                if (!posOnly) SavePNG(layerName);
+            }
+            // Save coordinates if wanted
+            if (prefs.trim) undo(app.activeDocument);
+
+            layer.visible = false;
+
             if (progressBarWindow) {
                 progressBarWindow.hide();
             }
+        } else {
+            return 'Cancel';
         }
+    }
+
+    if (progressBarWindow) {
+        progressBarWindow.close();
     }
 
     if (prefs.manifest) {
@@ -591,6 +591,15 @@ function getFolder(layer, layerName) {
     return layerName;
 }
 
+function removeLayers(parent) {
+    for (var i = 0; i < parent.layers.length; i++) {
+        var layer = parent.layers[i];
+        if (layer.name.indexOf(prefs.ignore, 0) > -1) {
+            layer.remove();
+        }
+    }
+}
+
 function countLayers(parent) {
     for (var i = 0; i < parent.layers.length; i++) {
         var layer = parent.layers[i];
@@ -617,7 +626,6 @@ function undo(doc) {
     ref57.putName(idSnpS, doc.name);
     desc121.putReference(idnull, ref57);
     executeAction(idslct, desc121, DialogModes.NO);
-
     selectAllLayers();
 
     var idHd = cTID('Hd  ');
@@ -634,35 +642,29 @@ function undo(doc) {
     executeAction(idHd, desc295, DialogModes.NO);
 }
 
-function createProgressBar() {
-    var found = new Array(50);
-
+function createProgressBar(count) {
     var p = new Window('palette', 'Script Progress');
     p.grp = p.add('group', undefined, 'Progress Bar');
     /* p.info = p.grp.add('statictext', undefined, 'Script Progress:'); */
-    p.pbar = p.grp.add('progressbar', undefined, 0, found.length);
+    p.pbar = p.grp.add('progressbar', undefined, 0, count);
     p.msg = p.add('statictext', undefined, '');
     p.warn = p.add('statictext', undefined, "Don't make changes to the current document while the script is running!");
-
-    p.pbar.preferredSize = [300, 0];
+    p.pbar.preferredSize = [300, 10];
     p.pbar.orientation = 'column';
     p.pbar.alignChildren = 'fill';
     p.pbar.visible = false;
+    p.pbar.value = 0;
 
     return p;
 }
 
-function showProgressBar(p, message, maxValue) {
+function showProgressBar(p, message, value, maxValue) {
     p.msg.text = message;
     p.pbar.maxvalue = maxValue;
-    p.pbar.value = 0;
+    p.pbar.value = value;
 
     p.center();
     p.show();
-}
-
-function updateProgressBar(p, i) {
-    p.pbar.value = i + 1;
 }
 
 function cTID(s) {
